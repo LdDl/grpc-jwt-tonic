@@ -242,6 +242,14 @@ pub struct JwtEngine {
 }
 
 impl JwtEngine {
+    /// Creates a new JWT engine with the given options.
+    /// 
+    /// # Arguments
+    /// * `opts` - Configuration options for the engine
+    /// 
+    /// # Returns
+    /// * `Ok(JwtEngine)` - Successfully created engine
+    /// * `Err(JwtError)` - If configuration is invalid or keys cannot be loaded
     pub fn new(mut opts: JwtEngineOptions) -> Result<Self, JwtError> {
         // Apply defaults
         if opts.token_lookup.is_empty() {
@@ -287,7 +295,14 @@ impl JwtEngine {
         Ok(Self { opts: Arc::new(opts) })
     }
 
-    // Static helper method
+    /// Checks if the algorithm requires public/private key pairs (RSA algorithms).
+    /// 
+    /// # Arguments
+    /// * `alg` - The algorithm to check
+    /// 
+    /// # Returns
+    /// * `true` - If algorithm uses RSA (requires key files)
+    /// * `false` - If algorithm uses HMAC (uses secret)
     fn using_public_key_algo_static(alg: &AlgorithmKind) -> bool {
         matches!(
             alg,
@@ -295,6 +310,16 @@ impl JwtEngine {
         )
     }
     
+    /// Loads RSA keys from files and creates the appropriate algorithm variant.
+    /// 
+    /// # Arguments
+    /// * `priv_key_file` - Path to private key file
+    /// * `pub_key_file` - Path to public key file
+    /// * `current_alg` - Current algorithm to determine which RSA variant to create
+    /// 
+    /// # Returns
+    /// * `Ok(AlgorithmKind)` - Algorithm with loaded keys
+    /// * `Err(JwtError)` - If files cannot be read or keys are invalid
     fn read_keys_static(priv_key_file: &str, pub_key_file: &str, current_alg: &AlgorithmKind) -> Result<AlgorithmKind, JwtError> {
         let private_pem = Self::read_private_key_static(priv_key_file)?;
         let public_pem = Self::read_public_key_static(pub_key_file)?;
@@ -307,6 +332,14 @@ impl JwtEngine {
         }
     }
 
+    /// Reads and validates a private key from file.
+    /// 
+    /// # Arguments
+    /// * `file_path` - Path to the private key file
+    /// 
+    /// # Returns
+    /// * `Ok(Vec<u8>)` - The private key bytes
+    /// * `Err(JwtError)` - If file cannot be read or key is invalid
     fn read_private_key_static(file_path: &str) -> Result<Vec<u8>, JwtError> {
         let key_data = fs::read(file_path)
             .map_err(|_| JwtError::NoPrivKeyFile)?;
@@ -318,6 +351,14 @@ impl JwtEngine {
         Ok(key_data)
     }
 
+    /// Reads and validates a public key from file.
+    /// 
+    /// # Arguments
+    /// * `file_path` - Path to the public key file
+    /// 
+    /// # Returns
+    /// * `Ok(Vec<u8>)` - The public key bytes
+    /// * `Err(JwtError)` - If file cannot be read or key is invalid
     fn read_public_key_static(file_path: &str) -> Result<Vec<u8>, JwtError> {
         let key_data = fs::read(file_path)
             .map_err(|_| JwtError::NoPubKeyFile)?;
@@ -329,10 +370,19 @@ impl JwtEngine {
         Ok(key_data)
     }
 
+    /// Checks if this engine uses a public key algorithm.
+    /// 
+    /// # Returns
+    /// * `true` - If using RSA algorithm
+    /// * `false` - If using HMAC algorithm
     pub fn using_public_key_algo(&self) -> bool {
         Self::using_public_key_algo_static(&self.opts.alg)
     }
 
+    /// Returns the current Unix timestamp in seconds.
+    /// 
+    /// # Returns
+    /// * `u64` - Current timestamp in seconds since Unix epoch
     pub fn now() -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -340,6 +390,14 @@ impl JwtEngine {
             .as_secs()
     }
 
+    /// Signs a JWT token with additional claims.
+    /// 
+    /// # Arguments
+    /// * `extra` - Additional claims to include in the token
+    /// 
+    /// # Returns
+    /// * `Ok((String, u64))` - Tuple of (JWT token, expiration timestamp)
+    /// * `Err(JwtError)` - If token creation fails
     pub fn sign_with_extra(&self, mut extra: Map<String, Value>) -> Result<(String, u64), JwtError> {
         let now = Self::now();
         let exp = now + self.opts.timeout.as_secs();
@@ -354,6 +412,14 @@ impl JwtEngine {
         Ok((token, exp))
     }
 
+    /// Decodes a JWT token without validating expiration.
+    /// 
+    /// # Arguments
+    /// * `token` - The JWT token string to decode
+    /// 
+    /// # Returns
+    /// * `Ok(Claims)` - The decoded claims
+    /// * `Err(JwtError)` - If token is malformed or signature is invalid
     pub fn decode(&self, token: &str) -> Result<Claims, JwtError> {
         let mut validation = Validation::new(self.opts.alg.algorithm());
         validation.validate_exp = false;
@@ -365,6 +431,14 @@ impl JwtEngine {
         Ok(data.claims)
     }
 
+    /// Extracts all claims from a JWT token as a Map.
+    /// 
+    /// # Arguments
+    /// * `token` - The JWT token string to parse
+    /// 
+    /// # Returns
+    /// * `Ok(Map<String, Value>)` - All claims including exp and orig_iat
+    /// * `Err(JwtError)` - If token cannot be decoded
     pub fn get_claims(&self, token: &str) -> Result<Map<String, Value>, JwtError> {
         let claims = self.decode(token)?;
         let mut m = claims.extra.clone();
@@ -373,6 +447,14 @@ impl JwtEngine {
         Ok(m)
     }
 
+    /// Validates that a token has not expired.
+    /// 
+    /// # Arguments
+    /// * `claims` - The claims map to check for expiration
+    /// 
+    /// # Returns
+    /// * `Ok(())` - If token is still valid
+    /// * `Err(JwtError)` - If token is expired or exp field is invalid
     pub fn ensure_not_expired(&self, claims: &Map<String, Value>) -> Result<(), JwtError> {
         let exp = claims
             .get("exp")
@@ -385,6 +467,14 @@ impl JwtEngine {
         Ok(())
     }
 
+    /// Checks if a token is within the refresh window and returns updated claims.
+    /// 
+    /// # Arguments
+    /// * `token` - The JWT token string to check
+    /// 
+    /// # Returns
+    /// * `Ok(Map<String, Value>)` - Claims if token can be refreshed
+    /// * `Err(JwtError)` - If token is beyond refresh window or invalid
     pub fn check_if_token_expire(&self, token: &str) -> Result<Map<String, Value>, JwtError> {
         let claims = self.decode(token)?;
         let orig_iat = claims.orig_iat;
