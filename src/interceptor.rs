@@ -29,6 +29,18 @@ pub struct JwtInterceptor {
 }
 
 impl JwtInterceptor {
+    /// Creates a new JWT interceptor with the specified configuration.
+    /// 
+    /// # Arguments
+    /// * `jwt_engine` - The JWT engine for token operations
+    /// * `identity_handler` - Function to extract identity from claims
+    /// * `authorizator` - Function to authorize users
+    /// * `authenticator` - Function to authenticate credentials
+    /// * `methods` - Array of method paths that require authentication
+    /// 
+    /// # Returns
+    /// * `Ok(JwtInterceptor)` - Successfully created interceptor
+    /// * `Err(JwtError)` - If configuration is invalid
     pub fn new(
         jwt_engine: Arc<JwtEngine>,
         identity_handler: Arc<dyn Fn(&Map<String, Value>) -> Option<Value> + Send + Sync>,
@@ -49,6 +61,13 @@ impl JwtInterceptor {
         Ok(interceptor)
     }
 
+    /// Adds a payload function to include custom claims in JWT tokens.
+    /// 
+    /// # Arguments
+    /// * `payload_func` - Function that takes user identity and returns custom claims
+    /// 
+    /// # Returns
+    /// * `JwtInterceptor` - Self with payload function configured
     pub fn with_payload_func(
         mut self, 
         payload_func: Arc<dyn Fn(&Value) -> Map<String, Value> + Send + Sync>
@@ -57,32 +76,68 @@ impl JwtInterceptor {
         self
     }
 
-    /// Provide list of methods for interception
+    /// Adds methods to the list of methods that require JWT authentication.
+    /// 
+    /// # Arguments
+    /// * `methods` - Array of gRPC method paths (e.g., "/service.Service/Method")
     pub fn intercept_methods(&mut self, methods: &[&str]) {
         for method in methods {
             self.intercepted_methods.insert(method.to_string());
         }
     }
 
-    /// Delete methods from list for interception
+    /// Removes methods from the list of intercepted methods.
+    /// 
+    /// # Arguments
+    /// * `methods` - Array of gRPC method paths to stop intercepting
     pub fn ignore_methods(&mut self, methods: &[&str]) {
         for method in methods {
             self.intercepted_methods.remove(*method);
         }
     }
 
+    /// Checks if a method requires JWT authentication.
+    /// 
+    /// # Arguments
+    /// * `method` - The gRPC method path to check
+    /// 
+    /// # Returns
+    /// * `true` - If method requires authentication
+    /// * `false` - If method is public
     fn check_method(&self, method: &str) -> bool {
         self.intercepted_methods.contains(method)
     }
 
-    /// Extract token from metadata
+    /// Extracts JWT token from request metadata.
+    /// 
+    /// Currently looks for token in the "token" metadata key.
+    /// 
+    /// # Arguments
+    /// * `metadata` - The request metadata map
+    /// 
+    /// # Returns
+    /// * `Some(String)` - The extracted token
+    /// * `None` - If no token found or token is invalid
     fn extract_token_from_metadata(&self, metadata: &MetadataMap) -> Option<String> {
         metadata.get("token")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string())
     }
 
-    /// Validate token and return claims and identity (common logic for both interceptors)
+    /// Validates a JWT token and extracts user identity.
+    /// 
+    /// This is the core authentication logic that:
+    /// 1. Decodes and validates the JWT token
+    /// 2. Checks token expiration
+    /// 3. Extracts user identity from claims
+    /// 4. Performs authorization check
+    /// 
+    /// # Arguments
+    /// * `token_string` - The JWT token to validate
+    /// 
+    /// # Returns
+    /// * `Ok((claims, identity))` - Token is valid with claims and identity
+    /// * `Err(Status)` - Token is invalid, expired, or user is unauthorized
     fn validate_token_and_get_identity(
         &self, 
         token_string: &str
@@ -107,7 +162,18 @@ impl JwtInterceptor {
         Ok((claims, identity))
     }
 
-    /// Unary interceptor
+    /// Interceptor for unary gRPC calls.
+    /// 
+    /// Validates JWT tokens for protected methods. Public methods are allowed through
+    /// without authentication.
+    /// 
+    /// # Arguments
+    /// * `req` - The incoming gRPC request
+    /// * `method` - The gRPC method path being called
+    /// 
+    /// # Returns
+    /// * `Ok(Request)` - Request is authenticated or method is public
+    /// * `Err(Status)` - Authentication failed or token is invalid
     pub fn auth_interceptor(
         &self,
         req: Request<()>,
@@ -126,7 +192,18 @@ impl JwtInterceptor {
         Ok(req)
     }
 
-    /// Stream interceptor
+    /// Interceptor for streaming gRPC calls.
+    /// 
+    /// Similar to unary interceptor but designed for streaming endpoints.
+    /// Validates JWT tokens for protected streaming methods.
+    /// 
+    /// # Arguments
+    /// * `req` - The incoming gRPC request
+    /// * `method` - The gRPC method path being called
+    /// 
+    /// # Returns
+    /// * `Ok(Request)` - Request is authenticated or method is public
+    /// * `Err(Status)` - Authentication failed or token is invalid
     pub fn auth_stream_interceptor(
         &self,
         req: Request<()>,
@@ -145,7 +222,17 @@ impl JwtInterceptor {
         Ok(req)
     }
 
-    /// Provide access to claims
+    /// Extracts and validates claims from a JWT token.
+    /// 
+    /// Utility method to get claims without performing full authentication.
+    /// Useful for extracting user data from valid tokens.
+    /// 
+    /// # Arguments
+    /// * `token` - The JWT token string
+    /// 
+    /// # Returns
+    /// * `Ok(Map<String, Value>)` - The token claims
+    /// * `Err(JwtError)` - If token is invalid or malformed
     pub fn get_claims_from_jwt(&self, token: &str) -> Result<Map<String, Value>, JwtError> {
         self.jwt_object.get_claims(token)
     }
