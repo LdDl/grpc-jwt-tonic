@@ -8,12 +8,23 @@ use tonic::{
     async_trait, metadata::MetadataMap, Request, Response, Status, 
 };
 
+/// JWT interceptor that provides authentication and authorization for gRPC methods.
+/// 
+/// The interceptor can selectively protect gRPC methods by checking JWT tokens,
+/// validating user identity, and enforcing authorization rules. It also implements
+/// the JWT service for login and token refresh operations.
 pub struct JwtInterceptor {
+    /// The JWT engine used for token operations
     jwt_object: Arc<JwtEngine>,
+    /// Set of method paths that require JWT authentication
     intercepted_methods: HashSet<String>,
+    /// Function to extract identity from JWT claims
     pub identity_handler: Arc<dyn Fn(&Map<String, Value>) -> Option<Value> + Send + Sync>,
+    /// Function to authorize a user based on their identity
     pub authorizator: Arc<dyn Fn(&Value) -> bool + Send + Sync>,
+    /// Function to authenticate username/password credentials
     pub authenticator: Arc<dyn Fn(&str, &str) -> Result<Value, JwtError> + Send + Sync>,
+    /// Optional function to add custom payload to JWT tokens
     pub payload_func: Option<Arc<dyn Fn(&Value) -> Map<String, Value> + Send + Sync>>,
 }
 

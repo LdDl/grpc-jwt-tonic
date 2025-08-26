@@ -154,6 +154,9 @@ This Rust implementation maintains full compatibility with the [original Go vers
 ## **Support**
 
 If you have troubles or questions please [open an issue](https://github.com/LdDl/grpc-jwt-tonic/issues/new).
+
+Use this crate carefully: there are no tests. I have no that much time to test every case (for my job purposes it works as intended).
+
 PRs are welcome!
 
 ### **Related Projects**
