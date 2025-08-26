@@ -98,6 +98,7 @@ pub enum AlgorithmKind {
 }
 
 impl AlgorithmKind {
+    /// Returns the jsonwebtoken Algorithm enum variant for this algorithm.
     pub fn algorithm(&self) -> Algorithm {
         match self {
             AlgorithmKind::HS256(_) => Algorithm::HS256,
@@ -108,6 +109,12 @@ impl AlgorithmKind {
             AlgorithmKind::RS512 { .. } => Algorithm::RS512,
         }
     }
+
+    /// Creates an EncodingKey for token signing.
+    /// 
+    /// # Returns
+    /// * `Ok(EncodingKey)` - Key for signing tokens
+    /// * `Err(JwtError)` - If key creation fails
     fn encoding_key(&self) -> Result<EncodingKey, JwtError> {
         match self {
             AlgorithmKind::HS256(k) | AlgorithmKind::HS384(k) | AlgorithmKind::HS512(k) => {
@@ -120,6 +127,12 @@ impl AlgorithmKind {
             }
         }
     }
+
+    /// Creates a DecodingKey for token verification.
+    /// 
+    /// # Returns
+    /// * `Ok(DecodingKey)` - Key for verifying tokens
+    /// * `Err(JwtError)` - If key creation fails
     fn decoding_key(&self) -> Result<DecodingKey, JwtError> {
         match self {
             AlgorithmKind::HS256(k) | AlgorithmKind::HS384(k) | AlgorithmKind::HS512(k) => {
@@ -132,6 +145,17 @@ impl AlgorithmKind {
             }
         }
     }
+
+    /// Creates an RSA algorithm variant by loading keys from files.
+    /// 
+    /// # Arguments
+    /// * `alg` - The RSA algorithm to use (RS256, RS384, or RS512)
+    /// * `priv_key_file` - Path to the private key file
+    /// * `pub_key_file` - Path to the public key file
+    /// 
+    /// # Returns
+    /// * `Ok(AlgorithmKind)` - The algorithm with loaded keys
+    /// * `Err(JwtError)` - If files cannot be read or keys are invalid
     pub fn from_rsa_files(alg: Algorithm, priv_key_file: &str, pub_key_file: &str) -> Result<Self, JwtError> {
         let private_pem = fs::read(priv_key_file)
             .map_err(|_| JwtError::NoPrivKeyFile)?;
