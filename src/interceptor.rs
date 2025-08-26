@@ -240,7 +240,21 @@ impl JwtInterceptor {
 
 #[async_trait]
 impl jwt_service_server::JwtService for JwtInterceptor {
-    /// LoginHandler implementation
+    /// Handles user login and JWT token generation.
+    /// 
+    /// This method:
+    /// 1. Authenticates username/password credentials
+    /// 2. Creates custom claims using payload function (if configured)
+    /// 3. Generates and signs a JWT token
+    /// 4. Returns token with expiration time
+    /// 
+    /// # Arguments
+    /// * `request` - Login request containing username and password
+    /// 
+    /// # Returns
+    /// * `Ok(LoginResponse)` - Always returns a response
+    ///   - Code 200: Successful login with token
+    ///   - Code 500: Authentication failed or token creation failed
     async fn login_handler(
         &self,
         request: Request<LoginRequest>,
@@ -276,7 +290,21 @@ impl jwt_service_server::JwtService for JwtInterceptor {
         }
     }
 
-    /// RefreshToken implementation
+    /// Handles JWT token refresh operations.
+    /// 
+    /// This method:
+    /// 1. Extracts existing JWT token from metadata
+    /// 2. Validates token is within refresh window
+    /// 3. Creates new token with updated expiration
+    /// 4. Returns refreshed token
+    /// 
+    /// # Arguments
+    /// * `request` - Refresh request (token comes from metadata)
+    /// 
+    /// # Returns
+    /// * `Ok(RefreshTokenResponse)` - Always returns a response
+    ///   - Code 200: Successfully refreshed token
+    ///   - Code 500: Token expired, invalid, or refresh failed
     async fn refresh_token(
         &self,
         request: Request<NoArguments>,
@@ -312,16 +340,45 @@ impl jwt_service_server::JwtService for JwtInterceptor {
     }
 }
 
-// Helper functions for use in other parts of your application
+/// Extracts JWT claims from a request that has been processed by the interceptor.
+/// 
+/// # Arguments
+/// * `req` - The gRPC request to extract claims from
+/// 
+/// # Returns
+/// * `Some(&Map<String, Value>)` - The JWT claims if present
+/// * `None` - If no claims found in request extensions
 pub fn get_claims_from_request<T>(req: &Request<T>) -> Option<&Map<String, Value>> {
     req.extensions().get::<Map<String, Value>>()
 }
 
+/// Extracts user identity from a request that has been processed by the interceptor.
+/// 
+/// # Arguments
+/// * `req` - The gRPC request to extract identity from
+/// 
+/// # Returns
+/// * `Some(&Value)` - The user identity if present
+/// * `None` - If no identity found in request extensions
 pub fn get_identity_from_request<T>(req: &Request<T>) -> Option<&Value> {
     req.extensions().get::<Value>()
 }
 
-// Tonic interceptor wrapper for unary calls
+/// Creates a Tonic interceptor function for unary gRPC calls.
+/// 
+/// This is a helper function to integrate the JWT interceptor with Tonic's
+/// interceptor system for unary (request-response) calls.
+/// 
+/// # Arguments
+/// * `jwt_interceptor` - The JWT interceptor instance
+/// 
+/// # Returns
+/// * Interceptor function that can be used with Tonic servers
+/// 
+/// # Note
+/// The current implementation uses a placeholder for method extraction.
+/// In a real implementation, you would extract the method path from Tonic's
+/// request context.
 pub fn create_unary_interceptor(
     jwt_interceptor: Arc<JwtInterceptor>,
 ) -> impl Fn(Request<()>) -> Result<Request<()>, Status> + Clone {
@@ -333,7 +390,22 @@ pub fn create_unary_interceptor(
     }
 }
 
-// Tonic interceptor wrapper for stream calls  
+/// Creates a Tonic interceptor function for streaming gRPC calls.
+/// 
+/// This is a helper function to integrate the JWT interceptor with Tonic's
+/// interceptor system for streaming calls (server streaming, client streaming,
+/// or bidirectional streaming).
+/// 
+/// # Arguments
+/// * `jwt_interceptor` - The JWT interceptor instance
+/// 
+/// # Returns
+/// * Interceptor function that can be used with Tonic servers
+/// 
+/// # Note
+/// The current implementation uses a placeholder for method extraction.
+/// In a real implementation, you would extract the method path from Tonic's
+/// request context.
 pub fn create_stream_interceptor(
     jwt_interceptor: Arc<JwtInterceptor>,
 ) -> impl Fn(Request<()>) -> Result<Request<()>, Status> + Clone {
