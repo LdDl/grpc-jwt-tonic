@@ -2,6 +2,15 @@
 name = "grpc-jwt-tonic"
 version = "0.1.0"
 edition = "2021"
+authors = ["Dmitrii <sexykdi@gmail.com>"]
+description = "JWT authentication and authorization middleware for servers in Rust + Tonic ecosystem"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/LdDl/grpc-jwt-tonic"
+homepage = "https://github.com/LdDl/grpc-jwt-tonic"
+documentation = "https://docs.rs/grpc-jwt-tonic"
+readme = "README.md"
+keywords = ["grpc", "jwt", "authentication", "tonic", "middleware"]
+categories = ["authentication", "web-programming", "network-programming"]
 build = "src/build.rs"
 
 [dependencies]
