@@ -6,27 +6,48 @@ use std::fs;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+/// JWT-related errors that can occur during token operations.
 #[derive(Debug)]
 pub enum JwtError {
+    /// Secret key is missing or empty
     MissingSecretKey,
+    /// The specified signing algorithm is not supported
     InvalidSigningAlgorithm,
+    /// The token has expired
     ExpiredToken,
+    /// The `exp` field is missing from token claims
     MissingExpField,
+    /// The `exp` field is not in the correct format (should be a number)
     WrongExpFormat,
+    /// Generic token error with custom message
     Token(String),
+    /// User lacks permission to access the resource
     Forbidden,
+    /// Authenticator function is not defined
     MissingAuthenticatorFunc,
+    /// Username or password is missing from login request
     MissingLoginValues,
+    /// Authentication failed due to incorrect credentials
     FailedAuthentication,
+    /// Failed to create JWT token
     FailedTokenCreation,
+    /// Authorization header is empty
     EmptyAuthHeader,
+    /// Authorization header format is invalid
     InvalidAuthHeader,
+    /// Query parameter token is empty
     EmptyQueryToken,
+    /// Cookie token is empty
     EmptyCookieToken,
+    /// Parameter token is empty
     EmptyParamToken,
+    /// Private key file cannot be read
     NoPrivKeyFile,
+    /// Public key file cannot be read
     NoPubKeyFile,
+    /// Private key is invalid or malformed
     InvalidPrivKey,
+    /// Public key is invalid or malformed
     InvalidPubKey,
 }
 
@@ -59,13 +80,20 @@ impl fmt::Display for JwtError {
 
 impl std::error::Error for JwtError {}
 
+/// Supported JWT signing algorithms with their key material.
 #[derive(Clone)]
 pub enum AlgorithmKind {
+    /// HMAC with SHA-256
     HS256(Vec<u8>),
+    /// HMAC with SHA-384
     HS384(Vec<u8>),
+    /// HMAC with SHA-512
     HS512(Vec<u8>),
+    /// RSA with SHA-256
     RS256 { private_pem: Vec<u8>, public_pem: Vec<u8> },
+    /// RSA with SHA-384
     RS384 { private_pem: Vec<u8>, public_pem: Vec<u8> },
+    /// RSA with SHA-512
     RS512 { private_pem: Vec<u8>, public_pem: Vec<u8> },
 }
 
@@ -125,18 +153,30 @@ impl AlgorithmKind {
     }
 }
 
+/// Configuration options for the JWT engine.
 #[derive(Clone)]
 pub struct JwtEngineOptions {
+    /// JWT realm identifier (default: "grpc jwt")
     pub realm: String,
+    /// Signing algorithm with key material
     pub alg: AlgorithmKind,
+    /// Token expiration duration (default: 1 hour)
     pub timeout: Duration,
+    /// Maximum time allowed for token refresh (default: 7 days)
     pub max_refresh: Duration,
+    /// Key name for identity in JWT claims (default: "identity")
     pub identity_key: String,
+    /// Where to find the token (default: "header:Authorization")
     pub token_lookup: String,
+    /// Token prefix in header (default: "Bearer")
     pub token_head_name: String,
+    /// Whether to send authorization in response headers
     pub send_authorization: bool,
+    /// Whether to disable abort on authentication failure (not handled in this version)
     pub disabled_abort: bool,
+    /// Path to private key file for RSA algorithms
     pub priv_key_file: String,
+    /// Path to public key file for RSA algorithms
     pub pub_key_file: String,
 }
 
@@ -158,16 +198,22 @@ impl Default for JwtEngineOptions {
     }
 }
 
+/// JWT claims structure containing expiration and custom data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
+    /// Expiration timestamp (seconds since Unix epoch)
     pub exp: u64,
+    /// Original issued at timestamp (seconds since Unix epoch)
     pub orig_iat: u64,
+    /// Additional custom claims
     #[serde(flatten)]
     pub extra: Map<String, Value>,
 }
 
+/// JWT engine for creating and validating JWT tokens.
 #[derive(Clone)]
 pub struct JwtEngine {
+    /// Engine configuration options
     pub opts: Arc<JwtEngineOptions>,
 }
 
