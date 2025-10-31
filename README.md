@@ -37,7 +37,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-grpc-jwt-tonic = "0.1.0"
+grpc-jwt-tonic = "0.2.0"
 tonic = "0.14.2"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 serde_json = "1.0"
