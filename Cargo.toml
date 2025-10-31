@@ -1,6 +1,6 @@
 [package]
 name = "grpc-jwt-tonic"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Dmitrii <sexykdi@gmail.com>"]
 description = "JWT authentication and authorization middleware for servers in Rust + Tonic ecosystem"
