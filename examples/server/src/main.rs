@@ -1,7 +1,7 @@
 use grpc_jwt_tonic::{
     jwt_engine::{JwtEngine, JwtEngineOptions, AlgorithmKind},
     interceptor::JwtInterceptor,
-    grpcjwt::jwt_service_server::{JwtService, JwtServiceServer},
+    grpcjwt::jwt_service_server::JwtServiceServer,
 };
 use serde_json::{Map, Value};
 use std::{pin::Pin, sync::Arc, time::Duration};
